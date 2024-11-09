@@ -26,11 +26,21 @@ class UDPLight {
 
     this.lightService
       .addCharacteristic(Characteristic.Brightness)
+      .setProps({
+        minValue: 0,
+        maxValue: 100,
+        minStep: 1
+      })
       .on('set', this.setBrightness.bind(this))
       .on('get', this.getBrightness.bind(this));
 
     this.lightService
       .addCharacteristic(Characteristic.ColorTemperature)
+      .setProps({
+        minValue: 140,  // Coldest temperature (in Mired)
+        maxValue: 500,  // Warmest temperature (in Mired)
+        minStep: 1
+      })
       .on('set', this.setColorTemperature.bind(this))
       .on('get', this.getColorTemperature.bind(this));
   }
@@ -50,22 +60,36 @@ class UDPLight {
   }
 
   setBrightness(brightness, callback) {
-    this.sendCommand(`l,${Math.round(brightness * 1023 / 100)}`, callback);
+    // Map 0-100 to 0-1023
+    const scaledBrightness = Math.round(brightness * 1023 / 100);
+    this.sendCommand(`l,${scaledBrightness}`, callback);
   }
 
   getBrightness(callback) {
     this.sendStatus((err, brightness, colorTemp) => {
-      callback(err, Math.round(brightness * 100 / 1023));
+      // Map 0-1023 to 0-100
+      const scaledBrightness = Math.round(brightness * 100 / 1023);
+      callback(err, scaledBrightness);
     });
   }
 
-  setColorTemperature(colorTemp, callback) {
-    this.sendCommand(`t,${Math.round(colorTemp * 1023 / 100)}`, callback);
+  setColorTemperature(miredValue, callback) {
+    // Convert Mired (140-500) to device value (1023-0)
+    // Note: Mired and device scales are inverted - higher Mired = warmer, lower device value = warmer
+    const deviceValue = Math.round(1023 - ((miredValue - 140) * 1023 / (500 - 140)));
+    this.sendCommand(`t,${deviceValue}`, callback);
   }
 
   getColorTemperature(callback) {
     this.sendStatus((err, brightness, colorTemp) => {
-      callback(err, Math.round(colorTemp * 100 / 1023));
+      if (err) {
+        callback(err);
+        return;
+      }
+      // Convert device value (0-1023) to Mired (140-500)
+      // Note: Mired and device scales are inverted
+      const miredValue = Math.round(140 + ((1023 - colorTemp) * (500 - 140) / 1023));
+      callback(null, miredValue);
     });
   }
 
@@ -82,13 +106,13 @@ class UDPLight {
   }
 
   sendStatus(callback) {
-    this.udpClient.send('s', this.port, this.ip, (err, bytes) => {
+    this.udpClient.send('s', this.port, this.ip, (err) => {
       if (err) {
         this.log(`Error getting status: ${err.message}`);
         callback(err);
       } else {
-        this.log(`Received status response`);
-        this.udpClient.on('message', (msg) => {
+        this.log(`Sent status request`);
+        this.udpClient.once('message', (msg) => {
           const [brightness, colorTemp] = msg.toString().split(',').map(Number);
           callback(null, brightness, colorTemp);
         });

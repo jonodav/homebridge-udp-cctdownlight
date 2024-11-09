@@ -1,15 +1,15 @@
 {
-  "name": "homebridge-udpcctdownlight",
-  "version": "0.0.1",
+  "name": "homebridge-udp-cctdownlight",
+  "version": "0.0.2",
   "license": "MIT",
   "description": "udp cct downlight homebridge",
   "keywords": [
     "homebridge-plugin",
-    "homebridge-udpcctdownlight"
+    "homebridge-udp-cctdownlight"
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/jonodav/homebridge-udpfan.git"
+    "url": "git://github.com/jonodav/homebridge-udp-cctdownlight.git"
   },
   "engines": {
     "homebridge": ">=0.2.0",
@@ -21,7 +21,7 @@
   },
   "author": "",
   "bugs": {
-    "url": "https://github.com/jonodav/homebridge-udpfan/issues"
+    "url": "https://github.com/jonodav/homebridge-udp-cctdownlight/issues"
   },
-  "homepage": "https://github.com/jonodav/homebridge-udpfan#readme"
+  "homepage": "https://github.com/jonodav/homebridge-udp-cctdownlight#readme"
 }
