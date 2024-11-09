@@ -1,11 +1,11 @@
 {
-  "name": "homebridge-udpfan",
+  "name": "homebridge-udpcctdownlight",
   "version": "0.0.1",
   "license": "MIT",
-  "description": "udp fan homebridge",
+  "description": "udp cct downlight homebridge",
   "keywords": [
     "homebridge-plugin",
-    "homebridge-udpfan"
+    "homebridge-udpcctdownlight"
   ],
   "repository": {
     "type": "git",
