@@ -50,7 +50,10 @@ class UDPLight {
   }
 
   setPowerState(state, callback) {
-    this.sendCommand(state ? '1' : '0', callback);
+    const command = state ? '1' : '0';
+    this.sendCommandWithStatus(command, (err, brightness) => {
+      callback(err, brightness > 0);
+    });
   }
 
   getPowerState(callback) {
@@ -62,14 +65,22 @@ class UDPLight {
   setBrightness(brightness, callback) {
     // Map 0-100 to 0-1023
     const scaledBrightness = Math.round(brightness * 1023 / 100);
-    this.sendCommand(`l,${scaledBrightness}`, callback);
+    this.sendCommandWithStatus(`l,${scaledBrightness}`, (err, brightness) => {
+      if (err) {
+        callback(err);
+        return;
+      }
+      callback(null, Math.round(brightness * 100 / 1023));
+    });
   }
 
   getBrightness(callback) {
     this.sendStatus((err, brightness, colorTemp) => {
-      // Map 0-1023 to 0-100
-      const scaledBrightness = Math.round(brightness * 100 / 1023);
-      callback(err, scaledBrightness);
+      if (err) {
+        callback(err);
+        return;
+      }
+      callback(null, Math.round(brightness * 100 / 1023));
     });
   }
 
@@ -77,7 +88,15 @@ class UDPLight {
     // Convert Mired (140-500) to device value (1023-0)
     // Note: Mired and device scales are inverted - higher Mired = warmer, lower device value = warmer
     const deviceValue = Math.round(1023 - ((miredValue - 140) * 1023 / (500 - 140)));
-    this.sendCommand(`t,${deviceValue}`, callback);
+    this.sendCommandWithStatus(`t,${deviceValue}`, (err, brightness, colorTemp) => {
+      if (err) {
+        callback(err);
+        return;
+      }
+      // Convert device value back to Mired for confirmation
+      const miredResult = Math.round(140 + ((1023 - colorTemp) * (500 - 140) / 1023));
+      callback(null, miredResult);
+    });
   }
 
   getColorTemperature(callback) {
@@ -86,22 +105,25 @@ class UDPLight {
         callback(err);
         return;
       }
-      // Convert device value (0-1023) to Mired (140-500)
-      // Note: Mired and device scales are inverted
       const miredValue = Math.round(140 + ((1023 - colorTemp) * (500 - 140) / 1023));
       callback(null, miredValue);
     });
   }
 
-  sendCommand(command, callback) {
+  sendCommandWithStatus(command, callback) {
     this.udpClient.send(command, this.port, this.ip, (err) => {
       if (err) {
         this.log(`Error sending command "${command}": ${err.message}`);
         callback(err);
-      } else {
-        this.log(`Sent command "${command}"`);
-        this.sendStatus(callback);
+        return;
       }
+      
+      this.log(`Sent command "${command}"`);
+      
+      // Wait briefly before requesting status to ensure command was processed
+      setTimeout(() => {
+        this.sendStatus(callback);
+      }, 50);
     });
   }
 
@@ -110,13 +132,32 @@ class UDPLight {
       if (err) {
         this.log(`Error getting status: ${err.message}`);
         callback(err);
-      } else {
-        this.log(`Sent status request`);
-        this.udpClient.once('message', (msg) => {
-          const [brightness, colorTemp] = msg.toString().split(',').map(Number);
-          callback(null, brightness, colorTemp);
-        });
+        return;
       }
+      
+      this.log(`Sent status request`);
+      
+      // Set up timeout to handle case where no response is received
+      const timeout = setTimeout(() => {
+        this.udpClient.removeListener('message', messageHandler);
+        callback(new Error('Status request timed out'));
+      }, 1000);
+      
+      const messageHandler = (msg) => {
+        clearTimeout(timeout);
+        try {
+          const [brightness, colorTemp] = msg.toString().split(',').map(Number);
+          if (isNaN(brightness) || isNaN(colorTemp)) {
+            callback(new Error('Invalid status response format'));
+            return;
+          }
+          callback(null, brightness, colorTemp);
+        } catch (error) {
+          callback(new Error('Failed to parse status response'));
+        }
+      };
+      
+      this.udpClient.once('message', messageHandler);
     });
   }
 }
