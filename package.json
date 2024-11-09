@@ -1,0 +1,27 @@
+{
+  "name": "homebridge-udpfan",
+  "version": "0.0.1",
+  "license": "MIT",
+  "description": "udp fan homebridge",
+  "keywords": [
+    "homebridge-plugin",
+    "homebridge-udpfan"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jonodav/homebridge-udpfan.git"
+  },
+  "engines": {
+    "homebridge": ">=0.2.0",
+    "node": ">=6.0.0"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/jonodav/homebridge-udpfan/issues"
+  },
+  "homepage": "https://github.com/jonodav/homebridge-udpfan#readme"
+}
